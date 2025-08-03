@@ -1,0 +1,93 @@
+/**
+ * Poxica Theme - Modern Dark Color Palette
+ * 2025 Design Trends: Elegant dark tones with vibrant cyan and electric accents
+ */
+
+:root {
+  /* Primary Color Palette */
+  --poxica-primary: #22d3ee;        /* Electric cyan */
+  --poxica-primary-hover: #06b6d4;  /* Darker cyan */
+  --poxica-secondary: #0ea5e9;      /* Electric blue */
+  --poxica-success: #16a34a;        /* Modern green */
+  --poxica-warning: #facc15;        /* Golden yellow */
+  --poxica-error: #dc2626;          /* Modern red */
+  
+  /* Background Colors */
+  --poxica-bg-primary: #09090b;     /* Pure dark */
+  --poxica-bg-secondary: #18181b;   /* Rich dark */
+  --poxica-bg-elevated: #27272a;    /* Elevated dark */
+  --poxica-bg-surface: #3f3f46;     /* Surface gray */
+  
+  /* Text Colors */
+  --poxica-text-primary: #ffffff;   /* Pure white */
+  --poxica-text-secondary: #f4f4f5; /* Light gray */
+  --poxica-text-muted: #e4e4e7;     /* Muted gray */
+  --poxica-text-subtle: #a1a1aa;    /* Subtle gray */
+  
+  /* Border Colors */
+  --poxica-border-primary: #27272a; /* Primary border */
+  --poxica-border-secondary: #3f3f46; /* Secondary border */
+  --poxica-border-subtle: #52525b;  /* Subtle border */
+}
+
+/* Global Background */
+body {
+  background-color: var(--poxica-bg-primary) !important;
+  color: var(--poxica-text-secondary) !important;
+}
+
+/* Header Styles */
+.main-header,
+.header-4 .header-top {
+  background-color: var(--poxica-bg-primary) !important;
+  border-bottom: 1px solid var(--poxica-border-primary) !important;
+}
+
+.site-title a,
+.site-description {
+  color: var(--poxica-text-primary) !important;
+}
+
+/* Navigation */
+.main-navigation,
+.mobile-navigation {
+  background-color: var(--poxica-bg-secondary) !important;
+}
+
+.main-navigation ul li a,
+.mobile-navigation a {
+  color: var(--poxica-text-secondary) !important;
+  transition: color 0.3s ease !important;
+}
+
+.main-navigation ul li a:hover,
+.main-navigation ul li:hover > a,
+.mobile-navigation a:hover {
+  color: var(--poxica-primary) !important;
+}
+
+/* Buttons */
+.button,
+.btn,
+input[type="submit"],
+input[type="button"],
+.woocommerce-Button,
+.single_add_to_cart_button {
+  background-color: var(--poxica-primary) !important;
+  color: var(--poxica-text-primary) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease !important;
+  font-weight: 600 !important;
+}
+
+.button:hover,
+.btn:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+.woocommerce-Button:hover,
+.single_add_to_cart_button:hover {
+  background-color: var(--poxica-primary-hover) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 5px 15px rgba(34, 211, 238, 0.3) !important;
+}

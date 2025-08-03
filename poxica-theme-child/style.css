@@ -1,0 +1,234 @@
+/**
+ * Theme Name: Poxica Theme Child
+ * Description: Child theme for Poxica Theme with modern dark color palette and 2025 typography trends. Perfect for WooCommerce stores with cutting-edge design.
+ * Author: Poxica
+ * Author URI: https://poxica.com
+ * Template: poxica-theme
+ * Version: 1.0.0
+ * Text Domain: poxica-theme-child
+ * Domain Path: /languages
+ * Requires at least: 5.8
+ * Tested up to: 6.4
+ * Requires PHP: 8.0
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Tags: ecommerce, woocommerce, shop, business, dark, modern, responsive, performance, child-theme
+ */
+
+/* Import parent theme styles */
+@import url("../poxica-theme/style.css");
+
+/* Import our modern color palette */
+@import url("../poxica-colors.css");
+
+/* Import our modern typography system */
+@import url("../poxica-modern-typography.css");
+
+/* Additional child theme customizations */
+
+/* Enhanced button animations */
+.button,
+.btn,
+input[type="submit"],
+input[type="button"],
+.woocommerce-Button,
+.single_add_to_cart_button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.button::before,
+.btn::before,
+input[type="submit"]::before,
+input[type="button"]::before,
+.woocommerce-Button::before,
+.single_add_to_cart_button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.button:hover::before,
+.btn:hover::before,
+input[type="submit"]:hover::before,
+input[type="button"]:hover::before,
+.woocommerce-Button:hover::before,
+.single_add_to_cart_button:hover::before {
+  left: 100%;
+}
+
+/* Modern card hover effects */
+.woocommerce ul.products li.product,
+.product-item,
+.post-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.woocommerce ul.products li.product::after,
+.product-item::after,
+.post-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.05), rgba(14, 165, 233, 0.05));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.woocommerce ul.products li.product:hover::after,
+.product-item:hover::after,
+.post-item:hover::after {
+  opacity: 1;
+}
+
+/* Improved focus states for accessibility */
+*:focus {
+  outline: 2px solid var(--poxica-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.1);
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 999999;
+  padding: 8px 16px;
+  background: var(--poxica-bg-primary);
+  color: var(--poxica-text-primary);
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.skip-link:focus {
+  left: 6px;
+  top: 7px;
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--poxica-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--poxica-bg-surface);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--poxica-primary);
+}
+
+/* Selection colors */
+::selection {
+  background: var(--poxica-primary);
+  color: var(--poxica-text-primary);
+}
+
+::-moz-selection {
+  background: var(--poxica-primary);
+  color: var(--poxica-text-primary);
+}
+
+/* Enhanced mobile navigation */
+@media (max-width: 768px) {
+  .mobile-navigation {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  /* Touch-friendly button sizes */
+  .button,
+  .btn,
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+    padding: 12px 24px;
+  }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode improvements */
+@media (prefers-contrast: high) {
+  .button,
+  .btn,
+  input[type="submit"],
+  input[type="button"] {
+    border: 2px solid currentColor;
+  }
+  
+  .woocommerce ul.products li.product,
+  .product-item,
+  .post-item {
+    border: 2px solid var(--poxica-border-primary);
+  }
+}
+
+/* Print optimizations */
+@media print {
+  .button,
+  .btn,
+  .navigation,
+  .sidebar,
+  .footer-widgets {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  a {
+    color: black !important;
+    text-decoration: underline !important;
+  }
+}
