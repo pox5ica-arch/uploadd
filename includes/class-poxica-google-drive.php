@@ -42,17 +42,24 @@ class Poxica_Google_Drive {
             ],
             'headers' => [
                 'Content-Type' => 'application/x-www-form-urlencoded'
-            ]
+            ],
+            'timeout' => 30
         ]);
         
         if (is_wp_error($response)) {
             throw new Exception(__('Error de conexión con Google Drive: ', 'poxica-image-uploader') . $response->get_error_message());
         }
         
+        $response_code = wp_remote_retrieve_response_code($response);
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
+        if ($response_code !== 200) {
+            $error_message = isset($body['error_description']) ? $body['error_description'] : 'HTTP ' . $response_code;
+            throw new Exception(__('Error de autenticación con Google Drive: ', 'poxica-image-uploader') . $error_message);
+        }
+        
         if (!isset($body['access_token'])) {
-            throw new Exception(__('Error de autenticación con Google Drive', 'poxica-image-uploader'));
+            throw new Exception(__('Error de autenticación con Google Drive: No se recibió access_token', 'poxica-image-uploader'));
         }
         
         $this->access_token = $body['access_token'];
@@ -325,29 +332,27 @@ class Poxica_Google_Drive {
      */
     public function test_connection() {
         try {
-            $token = $this->get_access_token();
+            error_log('Poxica: Starting test_connection');
             
-            // Try to access the root folder or create a test folder
-            if ($this->root_folder_id) {
-                $this->get_folder_contents($this->root_folder_id);
-                return [
-                    'success' => true,
-                    'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader')
-                ];
-            } else {
-                // Try to create a test folder in root
-                $test_folder = $this->create_folder('Poxica_Test_' . time());
-                $this->delete_folder($test_folder);
-                
-                return [
-                    'success' => true,
-                    'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader')
-                ];
-            }
+            $token = $this->get_access_token();
+            error_log('Poxica: Got access token: ' . substr($token, 0, 20) . '...');
+            
+            // Simply test if we can make a basic API call
+            error_log('Poxica: Testing basic API call');
+            $response = $this->make_request('about?fields=user');
+            error_log('Poxica: API call successful');
+            
+            return [
+                'success' => true,
+                'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader'),
+                'details' => 'API call successful. User: ' . (isset($response['user']['displayName']) ? $response['user']['displayName'] : 'Unknown')
+            ];
         } catch (Exception $e) {
+            error_log('Poxica: test_connection failed: ' . $e->getMessage());
             return [
                 'success' => false,
-                'message' => __('Error de conexión: ', 'poxica-image-uploader') . $e->getMessage()
+                'message' => __('Error de conexión: ', 'poxica-image-uploader') . $e->getMessage(),
+                'details' => $e->getTraceAsString()
             ];
         }
     }

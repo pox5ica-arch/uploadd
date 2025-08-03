@@ -273,18 +273,44 @@ class Poxica_Admin {
      * Handle test Google Drive connection AJAX
      */
     public function handle_test_drive_connection() {
-        check_ajax_referer('poxica_test_drive', 'nonce');
+        // Log the start of the function
+        error_log('Poxica: handle_test_drive_connection called');
+        
+        try {
+            check_ajax_referer('poxica_test_drive', 'nonce');
+        } catch (Exception $e) {
+            error_log('Poxica: Nonce verification failed: ' . $e->getMessage());
+            wp_send_json_error([
+                'message' => __('Error de seguridad: nonce inválido', 'poxica-image-uploader')
+            ]);
+        }
         
         if (!current_user_can('manage_options')) {
-            wp_die(__('Sin permisos suficientes', 'poxica-image-uploader'));
+            error_log('Poxica: User does not have manage_options capability');
+            wp_send_json_error([
+                'message' => __('Sin permisos suficientes', 'poxica-image-uploader')
+            ]);
         }
         
         $credentials = $_POST['credentials'] ?? '';
         $root_folder = $_POST['root_folder'] ?? '';
         
+        error_log('Poxica: Credentials length: ' . strlen($credentials));
+        error_log('Poxica: Root folder: ' . $root_folder);
+        
         if (empty($credentials)) {
+            error_log('Poxica: Empty credentials provided');
             wp_send_json_error([
                 'message' => __('Las credenciales son requeridas', 'poxica-image-uploader')
+            ]);
+        }
+        
+        // Validate JSON
+        $decoded_credentials = json_decode($credentials, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('Poxica: Invalid JSON credentials: ' . json_last_error_msg());
+            wp_send_json_error([
+                'message' => __('Las credenciales JSON no son válidas', 'poxica-image-uploader')
             ]);
         }
         
@@ -294,18 +320,28 @@ class Poxica_Admin {
             update_option('poxica_google_drive_root_folder', $root_folder);
         }
         
-        $google_drive = new Poxica_Google_Drive();
-        $result = $google_drive->test_connection();
-        
-        if ($result['success']) {
-            wp_send_json_success([
-                'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader'),
-                'details' => $result['details'] ?? ''
-            ]);
-        } else {
+        try {
+            $google_drive = new Poxica_Google_Drive();
+            error_log('Poxica: Google Drive object created');
+            
+            $result = $google_drive->test_connection();
+            error_log('Poxica: Test connection result: ' . print_r($result, true));
+            
+            if ($result['success']) {
+                wp_send_json_success([
+                    'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader'),
+                    'details' => $result['details'] ?? ''
+                ]);
+            } else {
+                wp_send_json_error([
+                    'message' => $result['message'],
+                    'details' => $result['details'] ?? ''
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('Poxica: Exception in test connection: ' . $e->getMessage());
             wp_send_json_error([
-                'message' => $result['message'],
-                'details' => $result['details'] ?? ''
+                'message' => __('Error interno: ', 'poxica-image-uploader') . $e->getMessage()
             ]);
         }
     }

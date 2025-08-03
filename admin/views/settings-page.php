@@ -89,6 +89,10 @@ $active_tab = $_GET['tab'] ?? 'google_drive';
                                 <span class="dashicons dashicons-cloud"></span>
                                 <?php _e('Probar Conexión con Google Drive', 'poxica-image-uploader'); ?>
                             </button>
+                            <button type="button" id="debug-connection" class="button button-secondary" style="margin-left: 10px;">
+                                <span class="dashicons dashicons-info"></span>
+                                <?php _e('Debug Conexión', 'poxica-image-uploader'); ?>
+                            </button>
                             <span id="test-result" style="margin-left: 10px;"></span>
                         </p>
                         <div id="test-output" style="margin-top: 10px;"></div>
@@ -324,26 +328,64 @@ jQuery(document).ready(function($) {
                 credentials: $('#poxica_google_drive_credentials').val(),
                 root_folder: $('#poxica_google_drive_root_folder').val()
             },
+            timeout: 30000, // 30 seconds timeout
             success: function(response) {
+                console.log('AJAX Success:', response);
                 if (response.success) {
                     result.addClass('success').text('<?php _e("✓ Conexión exitosa", "poxica-image-uploader"); ?>');
                     if (response.data.details) {
                         output.text(response.data.details).addClass('show');
                     }
                 } else {
-                    result.addClass('error').text('✗ ' + response.data.message);
-                    if (response.data.details) {
+                    result.addClass('error').text('✗ ' + (response.data ? response.data.message : 'Error desconocido'));
+                    if (response.data && response.data.details) {
                         output.text(response.data.details).addClass('show');
                     }
                 }
             },
-            error: function() {
-                result.addClass('error').text('<?php _e("✗ Error de conexión", "poxica-image-uploader"); ?>');
+            error: function(xhr, status, error) {
+                console.log('AJAX Error:', xhr, status, error);
+                console.log('Response Text:', xhr.responseText);
+                result.addClass('error').text('<?php _e("✗ Error de conexión: ", "poxica-image-uploader"); ?>' + status + ' - ' + error);
+                if (xhr.responseText) {
+                    output.text('Error details: ' + xhr.responseText).addClass('show');
+                }
             },
             complete: function() {
                 button.prop('disabled', false).html('<span class="dashicons dashicons-cloud"></span> <?php _e("Probar Conexión con Google Drive", "poxica-image-uploader"); ?>');
             }
         });
+    });
+    
+    // Debug connection
+    $('#debug-connection').on('click', function() {
+        var credentials = $('#poxica_google_drive_credentials').val();
+        var result = $('#test-result');
+        var output = $('#test-output');
+        
+        result.removeClass('success error');
+        output.removeClass('show');
+        
+        if (!credentials.trim()) {
+            result.addClass('error').text('Por favor ingresa las credenciales JSON primero');
+            return;
+        }
+        
+        try {
+            var parsed = JSON.parse(credentials);
+            var debugInfo = 'Credenciales JSON válidas:\n';
+            debugInfo += 'Tipo: ' + (parsed.type || 'N/A') + '\n';
+            debugInfo += 'Project ID: ' + (parsed.project_id || 'N/A') + '\n';
+            debugInfo += 'Client Email: ' + (parsed.client_email || 'N/A') + '\n';
+            debugInfo += 'Private Key ID: ' + (parsed.private_key_id || 'N/A') + '\n';
+            debugInfo += 'Private Key: ' + (parsed.private_key ? 'Presente' : 'Ausente') + '\n';
+            
+            result.addClass('success').text('✓ JSON válido');
+            output.text(debugInfo).addClass('show');
+        } catch (e) {
+            result.addClass('error').text('✗ JSON inválido: ' + e.message);
+            output.text('Error de parsing: ' + e.message).addClass('show');
+        }
     });
     
     // Test email
