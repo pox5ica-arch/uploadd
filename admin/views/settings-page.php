@@ -102,6 +102,10 @@ $active_tab = $_GET['tab'] ?? 'google_drive';
                                 <span class="dashicons dashicons-lock"></span>
                                 <?php _e('Test JWT Solo', 'poxica-image-uploader'); ?>
                             </button>
+                            <button type="button" id="clean-json" class="button button-secondary" style="margin-left: 10px;">
+                                <span class="dashicons dashicons-admin-tools"></span>
+                                <?php _e('Limpiar JSON', 'poxica-image-uploader'); ?>
+                            </button>
                             <span id="test-result" style="margin-left: 10px;"></span>
                         </p>
                         <div id="test-output" style="margin-top: 10px;"></div>
@@ -408,17 +412,49 @@ jQuery(document).ready(function($) {
         try {
             var parsed = JSON.parse(credentials);
             var debugInfo = 'Credenciales JSON válidas:\n';
+            debugInfo += 'Longitud total: ' + credentials.length + ' caracteres\n';
             debugInfo += 'Tipo: ' + (parsed.type || 'N/A') + '\n';
             debugInfo += 'Project ID: ' + (parsed.project_id || 'N/A') + '\n';
             debugInfo += 'Client Email: ' + (parsed.client_email || 'N/A') + '\n';
+            debugInfo += 'Client ID: ' + (parsed.client_id || 'N/A') + '\n';
             debugInfo += 'Private Key ID: ' + (parsed.private_key_id || 'N/A') + '\n';
-            debugInfo += 'Private Key: ' + (parsed.private_key ? 'Presente' : 'Ausente') + '\n';
+            debugInfo += 'Private Key: ' + (parsed.private_key ? 'Presente (' + parsed.private_key.length + ' chars)' : 'Ausente') + '\n';
+            debugInfo += 'Auth URI: ' + (parsed.auth_uri || 'N/A') + '\n';
+            debugInfo += 'Token URI: ' + (parsed.token_uri || 'N/A') + '\n';
             
-            result.addClass('success').text('✓ JSON válido');
+            // Check for invisible characters
+            var hasInvisible = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/.test(credentials);
+            if (hasInvisible) {
+                debugInfo += 'ADVERTENCIA: Contiene caracteres invisibles\n';
+            }
+            
+            // Check for BOM
+            if (credentials.charCodeAt(0) === 0xFEFF) {
+                debugInfo += 'ADVERTENCIA: Contiene BOM (Byte Order Mark)\n';
+            }
+            
+            result.addClass('success').text('✓ JSON válido en JavaScript');
             output.text(debugInfo).addClass('show');
         } catch (e) {
+            var debugInfo = 'Error de parsing JSON:\n';
+            debugInfo += 'Mensaje: ' + e.message + '\n';
+            debugInfo += 'Longitud: ' + credentials.length + ' caracteres\n';
+            debugInfo += 'Primeros 100 chars: ' + credentials.substring(0, 100) + '\n';
+            debugInfo += 'Últimos 100 chars: ' + credentials.substring(credentials.length - 100) + '\n';
+            
+            // Check for common issues
+            if (credentials.includes('\n')) {
+                debugInfo += 'Contiene saltos de línea\n';
+            }
+            if (credentials.includes('\r')) {
+                debugInfo += 'Contiene retornos de carro\n';
+            }
+            if (credentials.includes('\t')) {
+                debugInfo += 'Contiene tabulaciones\n';
+            }
+            
             result.addClass('error').text('✗ JSON inválido: ' + e.message);
-            output.text('Error de parsing: ' + e.message).addClass('show');
+            output.text(debugInfo).addClass('show');
         }
     });
     
@@ -508,6 +544,64 @@ jQuery(document).ready(function($) {
                 }
             }
         });
+    });
+    
+    // Clean JSON
+    $('#clean-json').on('click', function() {
+        var credentials = $('#poxica_google_drive_credentials').val();
+        var result = $('#test-result');
+        var output = $('#test-output');
+        
+        if (!credentials.trim()) {
+            result.addClass('error').text('Por favor ingresa las credenciales JSON primero');
+            return;
+        }
+        
+        try {
+            // Remove BOM if present
+            if (credentials.charCodeAt(0) === 0xFEFF) {
+                credentials = credentials.slice(1);
+            }
+            
+            // Remove invisible characters and extra whitespace
+            var cleaned = credentials
+                .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '') // Remove control characters
+                .replace(/^\s+|\s+$/g, '') // Trim whitespace
+                .replace(/\r\n/g, '\n') // Normalize line endings
+                .replace(/\r/g, '\n');
+            
+            // Try to parse and reformat
+            var parsed = JSON.parse(cleaned);
+            var formatted = JSON.stringify(parsed, null, 2);
+            
+            $('#poxica_google_drive_credentials').val(formatted);
+            
+            result.addClass('success').text('✓ JSON limpiado y formateado');
+            
+            var info = 'JSON limpiado exitosamente:\n';
+            info += 'Longitud original: ' + credentials.length + ' caracteres\n';
+            info += 'Longitud limpia: ' + formatted.length + ' caracteres\n';
+            info += 'Diferencia: ' + (credentials.length - formatted.length) + ' caracteres removidos\n';
+            
+            output.text(info).addClass('show');
+            
+        } catch (e) {
+            result.addClass('error').text('✗ Error limpiando JSON: ' + e.message);
+            
+            var info = 'Problemas encontrados:\n';
+            info += 'Error: ' + e.message + '\n';
+            info += 'Longitud: ' + credentials.length + ' caracteres\n';
+            
+            // Analyze the content
+            if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/.test(credentials)) {
+                info += 'Contiene caracteres de control invisibles\n';
+            }
+            if (credentials.charCodeAt(0) === 0xFEFF) {
+                info += 'Contiene BOM (Byte Order Mark)\n';
+            }
+            
+            output.text(info).addClass('show');
+        }
     });
     
     // Test email

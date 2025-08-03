@@ -309,10 +309,36 @@ class Poxica_Admin {
         
         // Validate JSON
         $decoded_credentials = json_decode($credentials, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('Poxica: Invalid JSON credentials: ' . json_last_error_msg());
+        $json_error = json_last_error();
+        
+        if ($json_error !== JSON_ERROR_NONE) {
+            $error_msg = '';
+            switch ($json_error) {
+                case JSON_ERROR_DEPTH:
+                    $error_msg = 'Profundidad máxima excedida';
+                    break;
+                case JSON_ERROR_STATE_MISMATCH:
+                    $error_msg = 'JSON malformado o caracteres inválidos';
+                    break;
+                case JSON_ERROR_CTRL_CHAR:
+                    $error_msg = 'Caracteres de control inesperados';
+                    break;
+                case JSON_ERROR_SYNTAX:
+                    $error_msg = 'Error de sintaxis JSON';
+                    break;
+                case JSON_ERROR_UTF8:
+                    $error_msg = 'Caracteres UTF-8 malformados';
+                    break;
+                default:
+                    $error_msg = json_last_error_msg();
+            }
+            
+            error_log('Poxica: Invalid JSON credentials: ' . $error_msg);
+            error_log('Poxica: JSON input length: ' . strlen($credentials));
+            
             wp_send_json_error([
-                'message' => __('Las credenciales JSON no son válidas', 'poxica-image-uploader')
+                'message' => __('Las credenciales JSON no son válidas: ', 'poxica-image-uploader') . $error_msg,
+                'details' => 'Longitud del JSON: ' . strlen($credentials) . ' caracteres'
             ]);
         }
         
@@ -374,8 +400,34 @@ class Poxica_Admin {
         
         // Validate JSON
         $decoded_credentials = json_decode($credentials, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_send_json_error(['message' => __('Las credenciales JSON no son válidas', 'poxica-image-uploader')]);
+        $json_error = json_last_error();
+        
+        if ($json_error !== JSON_ERROR_NONE) {
+            $error_msg = '';
+            switch ($json_error) {
+                case JSON_ERROR_DEPTH:
+                    $error_msg = 'Profundidad máxima excedida';
+                    break;
+                case JSON_ERROR_STATE_MISMATCH:
+                    $error_msg = 'JSON malformado o caracteres inválidos';
+                    break;
+                case JSON_ERROR_CTRL_CHAR:
+                    $error_msg = 'Caracteres de control inesperados';
+                    break;
+                case JSON_ERROR_SYNTAX:
+                    $error_msg = 'Error de sintaxis JSON';
+                    break;
+                case JSON_ERROR_UTF8:
+                    $error_msg = 'Caracteres UTF-8 malformados';
+                    break;
+                default:
+                    $error_msg = json_last_error_msg();
+            }
+            
+            wp_send_json_error([
+                'message' => __('Las credenciales JSON no son válidas: ', 'poxica-image-uploader') . $error_msg,
+                'details' => 'Longitud: ' . strlen($credentials) . ' chars'
+            ]);
         }
         
         try {
