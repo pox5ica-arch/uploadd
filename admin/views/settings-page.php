@@ -93,6 +93,10 @@ $active_tab = $_GET['tab'] ?? 'google_drive';
                                 <span class="dashicons dashicons-info"></span>
                                 <?php _e('Debug Conexión', 'poxica-image-uploader'); ?>
                             </button>
+                            <button type="button" id="debug-system" class="button button-secondary" style="margin-left: 10px;">
+                                <span class="dashicons dashicons-admin-tools"></span>
+                                <?php _e('Debug Sistema', 'poxica-image-uploader'); ?>
+                            </button>
                             <span id="test-result" style="margin-left: 10px;"></span>
                         </p>
                         <div id="test-output" style="margin-top: 10px;"></div>
@@ -346,9 +350,34 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.log('AJAX Error:', xhr, status, error);
                 console.log('Response Text:', xhr.responseText);
-                result.addClass('error').text('<?php _e("✗ Error de conexión: ", "poxica-image-uploader"); ?>' + status + ' - ' + error);
+                console.log('Status Code:', xhr.status);
+                
+                var errorMsg = '✗ Error de conexión (' + xhr.status + '): ';
+                if (xhr.status === 0) {
+                    errorMsg += 'Sin respuesta del servidor';
+                } else if (xhr.status === 403) {
+                    errorMsg += 'Sin permisos';
+                } else if (xhr.status === 404) {
+                    errorMsg += 'Endpoint no encontrado';
+                } else if (xhr.status === 500) {
+                    errorMsg += 'Error interno del servidor';
+                } else {
+                    errorMsg += status + ' - ' + error;
+                }
+                
+                result.addClass('error').text(errorMsg);
+                
                 if (xhr.responseText) {
-                    output.text('Error details: ' + xhr.responseText).addClass('show');
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        if (response && response.data && response.data.message) {
+                            output.text('Error: ' + response.data.message).addClass('show');
+                        } else {
+                            output.text('Response: ' + xhr.responseText).addClass('show');
+                        }
+                    } catch (e) {
+                        output.text('Raw response: ' + xhr.responseText).addClass('show');
+                    }
                 }
             },
             complete: function() {
@@ -386,6 +415,46 @@ jQuery(document).ready(function($) {
             result.addClass('error').text('✗ JSON inválido: ' + e.message);
             output.text('Error de parsing: ' + e.message).addClass('show');
         }
+    });
+    
+    // Debug system
+    $('#debug-system').on('click', function() {
+        var result = $('#test-result');
+        var output = $('#test-output');
+        
+        result.removeClass('success error').text('Obteniendo información del sistema...');
+        output.removeClass('show');
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'poxica_debug_system'
+            },
+            success: function(response) {
+                console.log('System Debug Response:', response);
+                if (response.success) {
+                    result.addClass('success').text('✓ Información del sistema obtenida');
+                    var debugInfo = 'Información del Sistema:\n';
+                    debugInfo += 'PHP Version: ' + response.data.debug_info.php_version + '\n';
+                    debugInfo += 'WordPress Version: ' + response.data.debug_info.wordpress_version + '\n';
+                    debugInfo += 'OpenSSL: ' + (response.data.debug_info.openssl_available ? 'Disponible' : 'NO DISPONIBLE') + '\n';
+                    debugInfo += 'cURL: ' + (response.data.debug_info.curl_available ? 'Disponible' : 'NO DISPONIBLE') + '\n';
+                    debugInfo += 'JSON: ' + (response.data.debug_info.json_available ? 'Disponible' : 'NO DISPONIBLE') + '\n';
+                    debugInfo += 'WP Remote: ' + (response.data.debug_info.wp_remote_available ? 'Disponible' : 'NO DISPONIBLE') + '\n';
+                    debugInfo += 'Memory Limit: ' + response.data.debug_info.memory_limit + '\n';
+                    debugInfo += 'Max Execution Time: ' + response.data.debug_info.max_execution_time + 's\n';
+                    
+                    output.text(debugInfo).addClass('show');
+                } else {
+                    result.addClass('error').text('✗ Error obteniendo información del sistema');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('System Debug Error:', xhr, status, error);
+                result.addClass('error').text('✗ Error en debug del sistema: ' + error);
+            }
+        });
     });
     
     // Test email

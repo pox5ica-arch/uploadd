@@ -51,15 +51,25 @@ class Poxica_Google_Drive {
         }
         
         $response_code = wp_remote_retrieve_response_code($response);
-        $body = json_decode(wp_remote_retrieve_body($response), true);
+        $response_body = wp_remote_retrieve_body($response);
+        $body = json_decode($response_body, true);
+        
+        error_log('Poxica: OAuth response code: ' . $response_code);
+        error_log('Poxica: OAuth response body: ' . $response_body);
         
         if ($response_code !== 200) {
-            $error_message = isset($body['error_description']) ? $body['error_description'] : 'HTTP ' . $response_code;
+            $error_message = 'HTTP ' . $response_code;
+            if (isset($body['error'])) {
+                $error_message .= ' - ' . $body['error'];
+            }
+            if (isset($body['error_description'])) {
+                $error_message .= ': ' . $body['error_description'];
+            }
             throw new Exception(__('Error de autenticación con Google Drive: ', 'poxica-image-uploader') . $error_message);
         }
         
         if (!isset($body['access_token'])) {
-            throw new Exception(__('Error de autenticación con Google Drive: No se recibió access_token', 'poxica-image-uploader'));
+            throw new Exception(__('Error de autenticación con Google Drive: No se recibió access_token. Respuesta: ', 'poxica-image-uploader') . $response_body);
         }
         
         $this->access_token = $body['access_token'];
@@ -74,6 +84,13 @@ class Poxica_Google_Drive {
      * Create JWT for service account authentication
      */
     private function create_jwt($credentials) {
+        error_log('Poxica: Starting JWT creation');
+        
+        // Check if OpenSSL is available
+        if (!function_exists('openssl_sign')) {
+            throw new Exception(__('Extensión OpenSSL no disponible', 'poxica-image-uploader'));
+        }
+        
         $header = [
             'alg' => 'RS256',
             'typ' => 'JWT'
@@ -88,20 +105,32 @@ class Poxica_Google_Drive {
             'iat' => $now
         ];
         
+        error_log('Poxica: JWT payload created for: ' . $credentials['client_email']);
+        
         $header_encoded = $this->base64url_encode(json_encode($header));
         $payload_encoded = $this->base64url_encode(json_encode($payload));
         
         $signature_input = $header_encoded . '.' . $payload_encoded;
         
         // Sign with private key
+        error_log('Poxica: Attempting to parse private key');
         $private_key = openssl_pkey_get_private($credentials['private_key']);
         if (!$private_key) {
-            throw new Exception(__('Clave privada de Google Drive inválida', 'poxica-image-uploader'));
+            $openssl_error = openssl_error_string();
+            error_log('Poxica: Failed to parse private key: ' . $openssl_error);
+            throw new Exception(__('Clave privada de Google Drive inválida: ', 'poxica-image-uploader') . $openssl_error);
         }
         
-        openssl_sign($signature_input, $signature, $private_key, OPENSSL_ALGO_SHA256);
+        error_log('Poxica: Private key parsed successfully, signing JWT');
+        if (!openssl_sign($signature_input, $signature, $private_key, OPENSSL_ALGO_SHA256)) {
+            $openssl_error = openssl_error_string();
+            error_log('Poxica: JWT signing failed: ' . $openssl_error);
+            throw new Exception(__('Error firmando JWT: ', 'poxica-image-uploader') . $openssl_error);
+        }
+        
         $signature_encoded = $this->base64url_encode($signature);
         
+        error_log('Poxica: JWT created successfully');
         return $signature_input . '.' . $signature_encoded;
     }
     

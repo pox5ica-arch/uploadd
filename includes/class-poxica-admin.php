@@ -23,6 +23,7 @@ class Poxica_Admin {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('wp_ajax_poxica_test_drive_connection', [$this, 'handle_test_drive_connection']);
+        add_action('wp_ajax_poxica_debug_system', [$this, 'handle_debug_system']);
         add_action('wp_ajax_poxica_manual_cleanup', [$this, 'handle_manual_cleanup']);
         add_action('wp_ajax_poxica_test_email', [$this, 'handle_test_email']);
     }
@@ -344,6 +345,33 @@ class Poxica_Admin {
                 'message' => __('Error interno: ', 'poxica-image-uploader') . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Handle system debug AJAX
+     */
+    public function handle_debug_system() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Sin permisos suficientes', 'poxica-image-uploader')]);
+        }
+        
+        $debug_info = [
+            'php_version' => PHP_VERSION,
+            'wordpress_version' => get_bloginfo('version'),
+            'openssl_available' => function_exists('openssl_sign'),
+            'curl_available' => function_exists('curl_init'),
+            'json_available' => function_exists('json_encode'),
+            'wp_remote_available' => function_exists('wp_remote_post'),
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time'),
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size')
+        ];
+        
+        wp_send_json_success([
+            'message' => 'Información del sistema obtenida',
+            'debug_info' => $debug_info
+        ]);
     }
 
     /**
