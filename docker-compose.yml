@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: poxica_db
+    environment:
+      POSTGRES_DB: poxica_upload
+      POSTGRES_USER: poxica_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - poxica_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: poxica_redis
+    networks:
+      - poxica_network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: poxica_backend
+    environment:
+      - DATABASE_URL=postgresql://poxica_user:${DB_PASSWORD}@db:5432/poxica_upload
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY}
+      - WOOCOMMERCE_URL=${WOOCOMMERCE_URL}
+      - WOOCOMMERCE_KEY=${WOOCOMMERCE_KEY}
+      - WOOCOMMERCE_SECRET=${WOOCOMMERCE_SECRET}
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FRONTEND_URL=https://upload.poxica.com
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+    volumes:
+      - ./credentials:/app/credentials:ro
+      - upload_temp:/app/temp
+    depends_on:
+      - db
+      - redis
+    networks:
+      - poxica_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=https://upload.poxica.com/api
+    container_name: poxica_frontend
+    networks:
+      - poxica_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: poxica_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites-available:/etc/nginx/sites-available:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - poxica_network
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: poxica_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --force-renewal --email ${ADMIN_EMAIL} -d upload.poxica.com --agree-tos
+
+volumes:
+  postgres_data:
+  upload_temp:
+
+networks:
+  poxica_network:
+    driver: bridge
