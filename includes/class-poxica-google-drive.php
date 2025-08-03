@@ -35,6 +35,7 @@ class Poxica_Google_Drive {
         $jwt = $this->create_jwt($credentials);
         
         // Request access token
+        error_log('Poxica: Sending OAuth request to Google');
         $response = wp_remote_post('https://oauth2.googleapis.com/token', [
             'body' => [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
@@ -360,28 +361,61 @@ class Poxica_Google_Drive {
      * Test connection to Google Drive
      */
     public function test_connection() {
+        $steps = [];
+        
         try {
             error_log('Poxica: Starting test_connection');
+            $steps[] = '1. Iniciando test de conexión';
             
+            // Step 1: Check credentials
+            if (empty($this->service_account_key)) {
+                throw new Exception('Credenciales no configuradas');
+            }
+            $steps[] = '2. Credenciales encontradas';
+            
+            // Step 2: Parse JSON
+            $credentials = json_decode($this->service_account_key, true);
+            if (!$credentials) {
+                throw new Exception('JSON inválido: ' . json_last_error_msg());
+            }
+            $steps[] = '3. JSON parseado correctamente';
+            
+            // Step 3: Check required fields
+            $required_fields = ['client_email', 'private_key', 'project_id'];
+            foreach ($required_fields as $field) {
+                if (!isset($credentials[$field])) {
+                    throw new Exception("Campo requerido faltante: $field");
+                }
+            }
+            $steps[] = '4. Campos requeridos presentes';
+            
+            // Step 4: Try to get access token
             $token = $this->get_access_token();
             error_log('Poxica: Got access token: ' . substr($token, 0, 20) . '...');
+            $steps[] = '5. Token de acceso obtenido: ' . substr($token, 0, 10) . '...';
             
-            // Simply test if we can make a basic API call
+            // Step 5: Try basic API call
             error_log('Poxica: Testing basic API call');
             $response = $this->make_request('about?fields=user');
             error_log('Poxica: API call successful');
+            $steps[] = '6. Llamada API exitosa';
+            
+            $user_name = isset($response['user']['displayName']) ? $response['user']['displayName'] : 'Unknown';
+            $steps[] = '7. Usuario obtenido: ' . $user_name;
             
             return [
                 'success' => true,
                 'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader'),
-                'details' => 'API call successful. User: ' . (isset($response['user']['displayName']) ? $response['user']['displayName'] : 'Unknown')
+                'details' => implode("\n", $steps)
             ];
         } catch (Exception $e) {
             error_log('Poxica: test_connection failed: ' . $e->getMessage());
+            $steps[] = 'ERROR: ' . $e->getMessage();
+            
             return [
                 'success' => false,
                 'message' => __('Error de conexión: ', 'poxica-image-uploader') . $e->getMessage(),
-                'details' => $e->getTraceAsString()
+                'details' => implode("\n", $steps) . "\n\nStack trace:\n" . $e->getTraceAsString()
             ];
         }
     }

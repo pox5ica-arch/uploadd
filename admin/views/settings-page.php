@@ -449,6 +449,8 @@ jQuery(document).ready(function($) {
                     debugInfo += 'WP Remote: ' + (response.data.debug_info.wp_remote_available ? 'Disponible' : 'NO DISPONIBLE') + '\n';
                     debugInfo += 'Memory Limit: ' + response.data.debug_info.memory_limit + '\n';
                     debugInfo += 'Max Execution Time: ' + response.data.debug_info.max_execution_time + 's\n';
+                    debugInfo += 'Server Time: ' + response.data.debug_info.server_time + '\n';
+                    debugInfo += 'Timezone: ' + response.data.debug_info.timezone + '\n';
                     
                     output.text(debugInfo).addClass('show');
                 } else {
@@ -458,6 +460,52 @@ jQuery(document).ready(function($) {
             error: function(xhr, status, error) {
                 console.log('System Debug Error:', xhr, status, error);
                 result.addClass('error').text('✗ Error en debug del sistema: ' + error);
+            }
+        });
+    });
+    
+    // Test JWT only
+    $('#test-jwt-only').on('click', function() {
+        var credentials = $('#poxica_google_drive_credentials').val();
+        var result = $('#test-result');
+        var output = $('#test-output');
+        
+        result.removeClass('success error').text('Probando creación de JWT...');
+        output.removeClass('show');
+        
+        if (!credentials.trim()) {
+            result.addClass('error').text('Por favor ingresa las credenciales JSON primero');
+            return;
+        }
+        
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'poxica_test_jwt_only',
+                credentials: credentials
+            },
+            timeout: 15000,
+            success: function(response) {
+                console.log('JWT Test Response:', response);
+                if (response.success) {
+                    result.addClass('success').text('✓ ' + response.data.message);
+                    if (response.data.details) {
+                        output.text(response.data.details).addClass('show');
+                    }
+                } else {
+                    result.addClass('error').text('✗ ' + response.data.message);
+                    if (response.data.details) {
+                        output.text(response.data.details).addClass('show');
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('JWT Test Error:', xhr, status, error);
+                result.addClass('error').text('✗ Error en test JWT: ' + status + ' - ' + error);
+                if (xhr.responseText) {
+                    output.text('Error details: ' + xhr.responseText).addClass('show');
+                }
             }
         });
     });
