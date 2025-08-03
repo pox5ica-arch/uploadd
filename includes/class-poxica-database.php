@@ -10,6 +10,20 @@ if (!defined('ABSPATH')) {
 class Poxica_Database {
     
     /**
+     * Check if HPOS (High-Performance Order Storage) is enabled
+     */
+    private static function is_hpos_enabled() {
+        if (function_exists('wc_get_container')) {
+            try {
+                return wc_get_container()->get(\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class)->custom_orders_table_usage_is_enabled();
+            } catch (Exception $e) {
+                return false;
+            }
+        }
+        return false;
+    }
+    
+    /**
      * Create plugin tables
      */
     public static function create_tables() {
@@ -276,16 +290,33 @@ class Poxica_Database {
         global $wpdb;
         $orders_table = $wpdb->prefix . 'poxica_orders';
         
-        return $wpdb->get_results($wpdb->prepare(
-            "SELECT po.*, p.post_status 
-             FROM $orders_table po 
-             LEFT JOIN {$wpdb->posts} p ON po.order_id = p.ID 
-             WHERE po.created_at < DATE_SUB(NOW(), INTERVAL %d DAY) 
-             AND po.status != 'completed' 
-             AND po.drive_folder_id IS NOT NULL 
-             AND (p.post_status NOT IN ('wc-completed', 'wc-processing') OR p.post_status IS NULL)",
-            $days
-        ));
+        // Check if HPOS is enabled
+        if (self::is_hpos_enabled()) {
+            // HPOS is enabled, use the new order tables
+            $hpos_orders_table = $wpdb->prefix . 'wc_orders';
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT po.*, wo.status as order_status 
+                 FROM $orders_table po 
+                 LEFT JOIN $hpos_orders_table wo ON po.order_id = wo.id 
+                 WHERE po.created_at < DATE_SUB(NOW(), INTERVAL %d DAY) 
+                 AND po.status != 'completed' 
+                 AND po.drive_folder_id IS NOT NULL 
+                 AND (wo.status NOT IN ('wc-completed', 'wc-processing') OR wo.status IS NULL)",
+                $days
+            ));
+        } else {
+            // HPOS is disabled, use traditional posts table
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT po.*, p.post_status as order_status
+                 FROM $orders_table po 
+                 LEFT JOIN {$wpdb->posts} p ON po.order_id = p.ID 
+                 WHERE po.created_at < DATE_SUB(NOW(), INTERVAL %d DAY) 
+                 AND po.status != 'completed' 
+                 AND po.drive_folder_id IS NOT NULL 
+                 AND (p.post_status NOT IN ('wc-completed', 'wc-processing') OR p.post_status IS NULL)",
+                $days
+            ));
+        }
     }
     
     /**
@@ -295,14 +326,29 @@ class Poxica_Database {
         global $wpdb;
         $orders_table = $wpdb->prefix . 'poxica_orders';
         
-        return $wpdb->get_results(
-            "SELECT po.* 
-             FROM $orders_table po 
-             LEFT JOIN {$wpdb->posts} p ON po.order_id = p.ID 
-             WHERE p.post_status = 'wc-cancelled' 
-             AND po.drive_folder_id IS NOT NULL 
-             AND po.status != 'cancelled'"
-        );
+        // Check if HPOS is enabled
+        if (self::is_hpos_enabled()) {
+            // HPOS is enabled, use the new order tables
+            $hpos_orders_table = $wpdb->prefix . 'wc_orders';
+            return $wpdb->get_results(
+                "SELECT po.* 
+                 FROM $orders_table po 
+                 LEFT JOIN $hpos_orders_table wo ON po.order_id = wo.id 
+                 WHERE wo.status = 'wc-cancelled' 
+                 AND po.drive_folder_id IS NOT NULL 
+                 AND po.status != 'cancelled'"
+            );
+        } else {
+            // HPOS is disabled, use traditional posts table
+            return $wpdb->get_results(
+                "SELECT po.* 
+                 FROM $orders_table po 
+                 LEFT JOIN {$wpdb->posts} p ON po.order_id = p.ID 
+                 WHERE p.post_status = 'wc-cancelled' 
+                 AND po.drive_folder_id IS NOT NULL 
+                 AND po.status != 'cancelled'"
+            );
+        }
     }
     
     /**

@@ -15,6 +15,7 @@
  * Requires PHP: 8.0
  * WC requires at least: 8.0
  * WC tested up to: 8.5
+ * Woo: HPOS compatible
  */
 
 // Prevent direct access
@@ -51,6 +52,13 @@ function poxica_activate() {
         wp_die(__('Por favor instala y activa WooCommerce antes de activar este plugin.', 'poxica-image-uploader'));
     }
     
+    // Declare HPOS compatibility
+    add_action('before_woocommerce_init', function() {
+        if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
+            \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+        }
+    });
+    
     // Create database tables
     require_once POXICA_PLUGIN_PATH . 'includes/class-poxica-database.php';
     Poxica_Database::create_tables();
@@ -75,6 +83,15 @@ function poxica_deactivate() {
     wp_clear_scheduled_hook('poxica_daily_cleanup');
 }
 register_deactivation_hook(__FILE__, 'poxica_deactivate');
+
+/**
+ * Declare HPOS compatibility
+ */
+add_action('before_woocommerce_init', function() {
+    if (class_exists('\Automattic\WooCommerce\Utilities\FeaturesUtil')) {
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility('custom_order_tables', __FILE__, true);
+    }
+});
 
 /**
  * Initialize the plugin

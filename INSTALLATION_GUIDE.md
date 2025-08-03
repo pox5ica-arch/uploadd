@@ -187,6 +187,16 @@ memory_limit = 256M
 2. Puedes reenviar el email desde WooCommerce
 3. O crear un nuevo enlace desde el admin
 
+### Compatibilidad con HPOS
+
+**¿Qué es HPOS?**: High-Performance Order Storage es una nueva característica de WooCommerce que usa tablas personalizadas para almacenar pedidos en lugar de la tabla wp_posts.
+
+**Compatibilidad**: Este plugin es completamente compatible con HPOS y funciona tanto con el modo HPOS activo como con el modo legacy (posts tradicionales).
+
+**Verificación**: En el dashboard principal del plugin verás el estado de HPOS:
+- "Compatible con HPOS (activo)": HPOS está habilitado
+- "Compatible con HPOS (modo legacy)": Usando el sistema tradicional
+
 ### Imágenes no se suben
 
 **Causa**: Problemas de permisos o configuración

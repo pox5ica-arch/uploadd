@@ -86,6 +86,25 @@ if (!defined('ABSPATH')) {
                     <span class="dashicons dashicons-yes-alt"></span>
                     <span class="status-text"><?php _e('Hooks de WooCommerce activos', 'poxica-image-uploader'); ?></span>
                 </div>
+                
+                <div class="poxica-status-item configured">
+                    <span class="dashicons dashicons-yes-alt"></span>
+                    <span class="status-text">
+                        <?php 
+                        $hpos_enabled = false;
+                        if (function_exists('wc_get_container')) {
+                            try {
+                                $hpos_enabled = wc_get_container()->get(\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class)->custom_orders_table_usage_is_enabled();
+                            } catch (Exception $e) {
+                                $hpos_enabled = false;
+                            }
+                        }
+                        echo $hpos_enabled ? 
+                            __('Compatible con HPOS (activo)', 'poxica-image-uploader') : 
+                            __('Compatible con HPOS (modo legacy)', 'poxica-image-uploader'); 
+                        ?>
+                    </span>
+                </div>
             </div>
         </div>
         

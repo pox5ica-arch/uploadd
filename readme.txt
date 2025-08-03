@@ -24,6 +24,7 @@ Poxica Image Uploader es un plugin completo que automatiza todo el proceso de re
 * **Emails personalizables**: Plantillas para clientes y administradores
 * **Seguridad avanzada**: Validación de archivos y protección contra malware
 * **Autoborrado inmediato**: Elimina carpetas al cancelar pedidos
+* **Compatible con HPOS**: Funciona con High-Performance Order Storage
 
 ### 🎯 Casos de Uso Ideales
 
@@ -147,6 +148,7 @@ Sí, detecta automáticamente las variaciones y las incluye en los nombres de ca
 * Sistema de logs
 * Validaciones de seguridad
 * Autoborrado de pedidos cancelados
+* Compatibilidad completa con HPOS (High-Performance Order Storage)
 
 == Upgrade Notice ==
 
@@ -161,6 +163,7 @@ Primera versión del plugin. Instalación limpia recomendada.
 * Extensiones PHP: openssl, fileinfo, curl
 * Cuenta de Google Cloud Platform
 * HTTPS habilitado
+* Compatible con HPOS (High-Performance Order Storage)
 
 == Support ==
 

@@ -12,6 +12,7 @@ Un plugin completo de WordPress para WooCommerce que automatiza la gestión de i
 - **Notificaciones por email**: Plantillas personalizables para clientes y administradores
 - **Cron jobs automáticos**: Tareas de mantenimiento programadas
 - **Seguridad avanzada**: Validación de archivos y protección contra código malicioso
+- **Compatible con HPOS**: Funciona con las nuevas tablas de pedidos de WooCommerce
 
 ## 📋 Requisitos
 
@@ -21,6 +22,7 @@ Un plugin completo de WordPress para WooCommerce que automatiza la gestión de i
 - Extensiones PHP: `openssl`, `fileinfo`, `curl`
 - Cuenta de Google Cloud Platform con API de Google Drive habilitada
 - HTTPS obligatorio para producción
+- **Compatible con HPOS**: Funciona con High-Performance Order Storage de WooCommerce
 
 ## 🛠️ Instalación
 
