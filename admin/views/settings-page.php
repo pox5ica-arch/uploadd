@@ -97,6 +97,11 @@ $active_tab = $_GET['tab'] ?? 'google_drive';
                                 <span class="dashicons dashicons-admin-tools"></span>
                                 <?php _e('Debug Sistema', 'poxica-image-uploader'); ?>
                             </button>
+                            <br><br>
+                            <button type="button" id="test-jwt-only" class="button button-secondary">
+                                <span class="dashicons dashicons-lock"></span>
+                                <?php _e('Test JWT Solo', 'poxica-image-uploader'); ?>
+                            </button>
                             <span id="test-result" style="margin-left: 10px;"></span>
                         </p>
                         <div id="test-output" style="margin-top: 10px;"></div>

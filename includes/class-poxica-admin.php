@@ -23,6 +23,7 @@ class Poxica_Admin {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('wp_ajax_poxica_test_drive_connection', [$this, 'handle_test_drive_connection']);
+        add_action('wp_ajax_poxica_test_jwt_only', [$this, 'handle_test_jwt_only']);
         add_action('wp_ajax_poxica_debug_system', [$this, 'handle_debug_system']);
         add_action('wp_ajax_poxica_manual_cleanup', [$this, 'handle_manual_cleanup']);
         add_action('wp_ajax_poxica_test_email', [$this, 'handle_test_email']);
@@ -339,10 +340,70 @@ class Poxica_Admin {
                     'details' => $result['details'] ?? ''
                 ]);
             }
-        } catch (Exception $e) {
-            error_log('Poxica: Exception in test connection: ' . $e->getMessage());
+        } catch (Throwable $e) {
+            $error_details = [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ];
+            error_log('Poxica: Exception in test connection: ' . print_r($error_details, true));
             wp_send_json_error([
-                'message' => __('Error interno: ', 'poxica-image-uploader') . $e->getMessage()
+                'message' => __('Error interno: ', 'poxica-image-uploader') . $e->getMessage(),
+                'details' => 'File: ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Handle JWT-only test AJAX
+     */
+    public function handle_test_jwt_only() {
+        // Log the start of the function
+        error_log('Poxica: handle_test_jwt_only called');
+        
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Sin permisos suficientes', 'poxica-image-uploader')]);
+        }
+        
+        $credentials = $_POST['credentials'] ?? '';
+        
+        if (empty($credentials)) {
+            wp_send_json_error(['message' => __('Las credenciales son requeridas', 'poxica-image-uploader')]);
+        }
+        
+        // Validate JSON
+        $decoded_credentials = json_decode($credentials, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_send_json_error(['message' => __('Las credenciales JSON no son válidas', 'poxica-image-uploader')]);
+        }
+        
+        try {
+            // Test only JWT creation, not API calls
+            $google_drive = new Poxica_Google_Drive();
+            
+            // Use reflection to access private method for testing
+            $reflection = new ReflectionClass($google_drive);
+            $create_jwt_method = $reflection->getMethod('create_jwt');
+            $create_jwt_method->setAccessible(true);
+            
+            $jwt = $create_jwt_method->invoke($google_drive, $decoded_credentials);
+            
+            if ($jwt) {
+                wp_send_json_success([
+                    'message' => __('JWT creado exitosamente', 'poxica-image-uploader'),
+                    'details' => 'JWT length: ' . strlen($jwt) . ' characters'
+                ]);
+            } else {
+                wp_send_json_error([
+                    'message' => __('Error creando JWT', 'poxica-image-uploader')
+                ]);
+            }
+        } catch (Throwable $e) {
+            error_log('Poxica: JWT test failed: ' . $e->getMessage());
+            wp_send_json_error([
+                'message' => __('Error creando JWT: ', 'poxica-image-uploader') . $e->getMessage(),
+                'details' => $e->getFile() . ':' . $e->getLine()
             ]);
         }
     }
