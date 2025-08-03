@@ -22,8 +22,9 @@ class Poxica_Admin {
     private function init_hooks() {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
+        add_action('wp_ajax_poxica_test_drive_connection', [$this, 'handle_test_drive_connection']);
         add_action('wp_ajax_poxica_manual_cleanup', [$this, 'handle_manual_cleanup']);
-        add_action('wp_ajax_poxica_send_test_email', [$this, 'handle_test_email']);
+        add_action('wp_ajax_poxica_test_email', [$this, 'handle_test_email']);
     }
     
     /**
@@ -207,9 +208,10 @@ class Poxica_Admin {
         }
         
         if (isset($_POST['poxica_max_file_size'])) {
-            $size = intval($_POST['poxica_max_file_size']);
-            if ($size < 1048576) $size = 10485760; // Min 1MB, default 10MB
-            update_option('poxica_max_file_size', $size);
+            $size_mb = intval($_POST['poxica_max_file_size']);
+            if ($size_mb < 1) $size_mb = 10; // Min 1MB, default 10MB
+            $size_bytes = $size_mb * 1048576; // Convert to bytes
+            update_option('poxica_max_file_size', $size_bytes);
         }
         
         if (isset($_POST['poxica_allowed_file_types'])) {
@@ -223,16 +225,14 @@ class Poxica_Admin {
      */
     private function save_email_settings() {
         $email_fields = [
-            'poxica_email_from_name',
-            'poxica_email_from_email',
-            'poxica_admin_notification_emails',
-            'poxica_email_upload_link_subject',
-            'poxica_email_completion_subject'
+            'poxica_upload_link_email_subject',
+            'poxica_completion_email_subject',
+            'poxica_admin_email'
         ];
         
         foreach ($email_fields as $field) {
             if (isset($_POST[$field])) {
-                if ($field === 'poxica_email_from_email') {
+                if ($field === 'poxica_admin_email') {
                     update_option($field, sanitize_email($_POST[$field]));
                 } else {
                     update_option($field, sanitize_text_field($_POST[$field]));
@@ -241,7 +241,7 @@ class Poxica_Admin {
         }
         
         // Handle textarea fields
-        $textarea_fields = ['poxica_email_upload_link_message', 'poxica_email_completion_message'];
+        $textarea_fields = ['poxica_upload_link_email_message', 'poxica_completion_email_message'];
         foreach ($textarea_fields as $field) {
             if (isset($_POST[$field])) {
                 update_option($field, sanitize_textarea_field($_POST[$field]));
@@ -270,24 +270,88 @@ class Poxica_Admin {
     }
     
     /**
+     * Handle test Google Drive connection AJAX
+     */
+    public function handle_test_drive_connection() {
+        check_ajax_referer('poxica_test_drive', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die(__('Sin permisos suficientes', 'poxica-image-uploader'));
+        }
+        
+        $credentials = $_POST['credentials'] ?? '';
+        $root_folder = $_POST['root_folder'] ?? '';
+        
+        if (empty($credentials)) {
+            wp_send_json_error([
+                'message' => __('Las credenciales son requeridas', 'poxica-image-uploader')
+            ]);
+        }
+        
+        // Temporarily save credentials for testing
+        update_option('poxica_google_drive_credentials', $credentials);
+        if (!empty($root_folder)) {
+            update_option('poxica_google_drive_root_folder', $root_folder);
+        }
+        
+        $google_drive = new Poxica_Google_Drive();
+        $result = $google_drive->test_connection();
+        
+        if ($result['success']) {
+            wp_send_json_success([
+                'message' => __('Conexión exitosa con Google Drive', 'poxica-image-uploader'),
+                'details' => $result['details'] ?? ''
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => $result['message'],
+                'details' => $result['details'] ?? ''
+            ]);
+        }
+    }
+
+    /**
      * Handle manual cleanup AJAX
      */
     public function handle_manual_cleanup() {
+        check_ajax_referer('poxica_manual_cleanup', 'nonce');
+        
         if (!current_user_can('manage_options')) {
             wp_die(__('Acceso denegado', 'poxica-image-uploader'));
         }
         
-        if (!wp_verify_nonce($_POST['nonce'], 'poxica_admin_nonce')) {
-            wp_die(__('Acceso denegado', 'poxica-image-uploader'));
+        $cleanup_type = $_POST['cleanup_type'] ?? 'full';
+        $cron = new Poxica_Cron($this->google_drive);
+        
+        switch ($cleanup_type) {
+            case 'full':
+                $result = $cron->manual_cleanup();
+                break;
+            case 'unpaid':
+                $result = $cron->cleanup_unpaid_orders();
+                break;
+            case 'cancelled':
+                $result = $cron->cleanup_cancelled_orders();
+                break;
+            case 'tokens':
+                $result = $cron->cleanup_expired_tokens();
+                break;
+            case 'temp_files':
+                $result = $cron->cleanup_temp_files();
+                break;
+            default:
+                wp_send_json_error(['message' => __('Tipo de limpieza no válido', 'poxica-image-uploader')]);
+                return;
         }
         
-        $cron = new Poxica_Cron($this->google_drive);
-        $result = $cron->manual_cleanup();
-        
-        if ($result['success']) {
-            wp_send_json_success($result);
+        if ($result) {
+            wp_send_json_success([
+                'message' => sprintf(__('Limpieza %s completada exitosamente', 'poxica-image-uploader'), $cleanup_type)
+            ]);
         } else {
-            wp_send_json_error($result);
+            wp_send_json_error([
+                'message' => sprintf(__('Error al ejecutar la limpieza %s', 'poxica-image-uploader'), $cleanup_type)
+            ]);
         }
     }
     
@@ -295,23 +359,20 @@ class Poxica_Admin {
      * Handle test email AJAX
      */
     public function handle_test_email() {
+        check_ajax_referer('poxica_test_email', 'nonce');
+        
         if (!current_user_can('manage_options')) {
-            wp_die(__('Acceso denegado', 'poxica-image-uploader'));
+            wp_die(__('Sin permisos suficientes', 'poxica-image-uploader'));
         }
         
-        if (!wp_verify_nonce($_POST['nonce'], 'poxica_admin_nonce')) {
-            wp_die(__('Acceso denegado', 'poxica-image-uploader'));
-        }
+        $admin_email = $_POST['admin_email'] ?? get_option('admin_email');
         
-        $email = sanitize_email($_POST['email']);
-        $template = sanitize_text_field($_POST['template']);
-        
-        if (!is_email($email)) {
+        if (!is_email($admin_email)) {
             wp_send_json_error(['message' => __('Email inválido', 'poxica-image-uploader')]);
         }
         
         $email_notifications = new Poxica_Email_Notifications();
-        $sent = $email_notifications->send_test_email($email, $template);
+        $sent = $email_notifications->send_test_email($admin_email);
         
         if ($sent) {
             wp_send_json_success(['message' => __('Email de prueba enviado correctamente', 'poxica-image-uploader')]);
